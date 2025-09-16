@@ -2,13 +2,12 @@
   "name": "isa_ngp_backend",
   "version": "1.0.0",
   "main": "index.js",
-
   "engines": {
-    "node":"20.x"
+    "node": "20.x"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-     "start":"node index.js"
+    "start": "node index.js"
   },
   "author": "",
   "license": "ISC",
@@ -23,6 +22,7 @@
     "multer": "^2.0.2",
     "nodemailer": "^7.0.6",
     "sharp": "^0.34.3",
+    "simple-swizzle": "^0.2.2",
     "socket.io": "^4.8.1",
     "uuid": "^12.0.0",
     "ws": "^8.18.3"

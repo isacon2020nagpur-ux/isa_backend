@@ -10,6 +10,8 @@ const path = require('path');
 const fs = require('fs').promises;
 const { v4: uuidv4 } = require('uuid');
 const cors = require('cors');
+const dotenv = require('dotenv');
+dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
@@ -20,23 +22,48 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+//eviromet veriable loaded or not checked
+const verifyEnvVariables = () => {
+  const requiredEnvVars = [
+    'SUPABASE_URL',
+    'SUPABASE_KEY',
+    'EMAIL_USER',
+    'EMAIL_PASS',
+    'JWT_SECRET',
+    'PORT'
+  ];
 
+  const missingVars = requiredEnvVars.filter((varName) => !process.env[varName]);
+
+  if (missingVars.length > 0) {
+    console.error(`❌ Missing environment variables: ${missingVars.join(', ')}`);
+    process.exit(1);
+  }
+
+  console.log('✅ All required environment variables loaded successfully');};
+
+verifyEnvVariables();
 // Supabase configuration
-const supabaseUrl = process.env.SUPABASE_URL || 'https://bzlqrlqhmilhfcjnjwnc.supabase.co';
-const supabaseKey = process.env.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ6bHFybHFobWlsaGZjam5qd25jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc5MzUxOTgsImV4cCI6MjA3MzUxMTE5OH0.wN_kbuhDUo26Ec26q8mbXWD6s9vexW_GIpKXLggWeCE';
+const supabaseUrl = process.env.SUPABASE_URL ;
+const supabaseKey = process.env.SUPABASE_KEY ;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Nodemailer configuration
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: process.env.EMAIL_USER || 'isacon2020nagpur@gmail.com',
-    pass: process.env.EMAIL_PASS || 'bcsa hwxm chmb epvx',
+    user: process.env.EMAIL_USER ,
+    pass: process.env.EMAIL_PASS ,
   },
 });
 
 // JWT configuration
-const JWT_SECRET = process.env.JWT_SECRET || 'isanagpur';
+const JWT_SECRET = process.env.JWT_SECRET;
+
+
+//port
+
+const port = process.env.PORT || 3000;
 
 // Multer configuration for file uploads
 const storage = multer.memoryStorage();
@@ -227,7 +254,63 @@ ISA Nagpur Team`,
   res.json({ message: 'OTP sent to email', userId, name });
 });
 
+// // Verify OTP for Registration
+// app.post('/verify-otp', async (req, res) => {
+//   const { userId, otp } = req.body;
 
+//   const { data: user, error } = await supabase
+//     .from('profiles')
+//     .select('*')
+//     .eq('id', userId)
+//     .eq('email_otp', otp)
+//     .single();
+
+//   if (error || !user) {
+//     return res.status(400).json({ error: 'Invalid OTP' });
+//   }
+
+//   await supabase
+//     .from('profiles')
+//     .update({ verified_email: true, email_otp: null })
+//     .eq('id', userId);
+
+//   await transporter.sendMail({
+//     to: user.email,
+//     subject: 'Registration Successful',
+//     text: 'Your registration is successful, waiting for admin approval.',
+//   });
+
+//   res.json({ message: 'Registration successful, waiting for admin approval', userId, name: user.name });
+// });
+
+// // Resend OTP
+// app.post('/resend-otp', async (req, res) => {
+//   const { userId } = req.body;
+
+//   const { data: user, error } = await supabase
+//     .from('profiles')
+//     .select('*')
+//     .eq('id', userId)
+//     .single();
+
+//   if (error || !user) {
+//     return res.status(400).json({ error: 'User not found' });
+//   }
+
+//   const otp = generateOTP();
+//   await supabase
+//     .from('profiles')
+//     .update({ email_otp: otp })
+//     .eq('id', userId);
+
+//   await transporter.sendMail({
+//     to: user.email,
+//     subject: 'Your OTP for Registration',
+//     text: `Your OTP is ${otp}.`,
+//   });
+
+//   res.json({ message: 'OTP resent successfully' });
+// });
 
 //  Verify OTP for Registration (using email)
 app.post('/verify-otp', async (req, res) => {
@@ -708,7 +791,49 @@ app.get('/directory', authenticateJWT, async (req, res) => {
 });
 
 
+// Send Chat Message
+// app.post('/chat', authenticateJWT, upload.single('file'), async (req, res) => {
+//   const { receiverId, content, type } = req.body;
 
+//   let filePath;
+//   if (req.file) {
+//     const ext = req.file.mimetype.includes('image') ? 'png' : path.extname(req.file.originalname);
+//     const filename = `${uuidv4()}${ext}`;
+//     filePath = path.join(__dirname, 'uploads/chats', filename);
+//     if (req.file.mimetype.includes('image')) {
+//       await sharp(req.file.buffer).png().toFile(filePath);
+//     } else {
+//       await fs.writeFile(filePath, req.file.buffer);
+//     }
+//   }
+
+//   const message = {
+//     id: uuidv4(),
+//     sender_id: req.user.id,
+//     receiver_id: receiverId,
+//     type: type || (req.file ? (req.file.mimetype.includes('image') ? 'image' : 'file') : 'text'),
+//     content: content || (req.file ? filename : ''),
+//     timestamp: new Date().toISOString(),
+//     status: 'sent',
+//   };
+
+//   const { error } = await supabase.from('messages').insert(message);
+//   if (error) {
+//     return res.status(500).json({ error: 'Failed to send message: ' + error.message });
+//   }
+
+//   await supabase
+//     .from('profiles')
+//     .update({ no_of_messages_sent: req.user.no_of_messages_sent + 1 })
+//     .eq('id', req.user.id);
+
+//   const receiverSocket = onlineUsers.get(receiverId);
+//   if (receiverSocket) {
+//     io.to(receiverSocket).emit('new-message', message);
+//   }
+
+//   res.json(message);
+// });
 
 
 // Send a message (FormData: supports text + file)
@@ -812,6 +937,31 @@ app.get('/chat/file/:filename', authenticateJWT, async (req, res) => {
 
 
 // Get messages with status = 'sent' for a specific receiver
+// app.get('/messages/unread/:id', authenticateJWT, async (req, res) => {
+//   try {
+//     const receiverId = req.params.id;
+
+//     const { data, error } = await supabase
+//       .from('messages')
+//       .select('id, sender_id, content, timestamp, status')
+//       .eq('receiver_id', receiverId)
+//       .eq('status', 'sent')  // status should be 'sent'
+//       .order('timestamp', { ascending: false });
+
+//     if (error) {
+//       return res.status(500).json({ error: 'Failed to fetch messages: ' + error.message });
+//     }
+
+//     return res.json({
+//       unreadCount: data.length,
+//       messages: data
+//     });
+//   } catch (err) {
+//     res.status(500).json({ error: 'Unexpected error: ' + err.message });
+//   }
+// });
+
+
 
 app.get('/messages/unread/:id', authenticateJWT, async (req, res) => {
   try {
@@ -862,7 +1012,26 @@ app.get('/messages/unread/:id', authenticateJWT, async (req, res) => {
 
 
 // Mark Message as Read
+// app.put('/chat/:messageId/read', authenticateJWT, async (req, res) => {
+//   const { messageId } = req.params;
+//   const { error } = await supabase
+//     .from('messages')
+//     .update({ status: 'read' })
+//     .eq('id', messageId)
+//     .eq('receiver_id', req.user.id);
 
+//   if (error) {
+//     return res.status(500).json({ error: 'Failed to update message status: ' + error.message });
+//   }
+
+//   const { data: message } = await supabase.from('messages').select('sender_id').eq('id', messageId).single();
+//   const senderSocket = onlineUsers.get(message.sender_id);
+//   if (senderSocket) {
+//     io.to(senderSocket).emit('message-read', { messageId });
+//   }
+
+//   res.json({ message: 'Message marked as read' });
+// });
 
 app.put('/chat/:messageId/read', authenticateJWT, async (req, res) => {
   const { messageId } = req.params;
@@ -897,7 +1066,22 @@ app.put('/chat/:messageId/read', authenticateJWT, async (req, res) => {
 
 
 // Get chat history between logged-in user and another user
+// app.get('/chat/:userId', authenticateJWT, async (req, res) => {
+//   const { userId } = req.params;
 
+//   // Fetch messages where current user is sender or receiver with the target user
+//   const { data: messages, error } = await supabase
+//     .from('messages')
+//     .select('*')
+//     .or(`and(sender_id.eq.${req.user.id},receiver_id.eq.${userId}),and(sender_id.eq.${userId},receiver_id.eq.${req.user.id})`)
+//     .order('timestamp', { ascending: true });
+
+//   if (error) {
+//     return res.status(500).json({ error: 'Failed to fetch messages: ' + error.message });
+//   }
+
+//   res.json(messages);
+// });
 
 app.get('/chat/:userId', authenticateJWT, async (req, res) => {
   const { userId } = req.params;
@@ -1112,7 +1296,21 @@ app.put('/research-paper/:id', authenticateJWT, upload.fields([{ name: 'file' },
   res.json(data);
 });
 
+// Get Research Paper
+// app.get('/research-paper/:id', authenticateJWT, async (req, res) => {
+//   const { id } = req.params;
+//   const { data, error } = await supabase
+//     .from('research_papers')
+//     .select('*')
+//     .eq('id', id)
+//     .single();
 
+//   if (error || !data) {
+//     return res.status(404).json({ error: 'Research paper not found' });
+//   }
+
+//   res.json(data);
+// });
 
 // Get Research Paper
 app.get('/research-paper/:id', authenticateJWT, async (req, res) => {
@@ -1202,8 +1400,67 @@ app.get('/research-paper/:id/download', authenticateJWT, async (req, res) => {
   res.sendFile(path.join(__dirname, 'uploads/research', data.file));
 });
 
-
 // Post Case Discussion
+// app.post('/case-discussion', authenticateJWT, upload.array('images', 5), async (req, res) => {
+//   const { title, type, specialty, publish_date, tags, diagnosis, outcome } = req.body;
+
+//   // Validate required fields
+//   if (!title || !type || !specialty || !publish_date || !tags || !diagnosis || !outcome) {
+//     return res.status(400).json({ error: 'Missing required fields' });
+//   }
+
+//   // Validate and parse tags
+//   let parsedTags;
+//   try {
+//     parsedTags = JSON.parse(tags);
+//     if (!Array.isArray(parsedTags) || !parsedTags.every(item => typeof item === 'string')) {
+//       return res.status(400).json({ error: 'Tags must be an array of strings' });
+//     }
+//   } catch (error) {
+//     return res.status(400).json({ error: 'Invalid JSON format for tags: ' + error.message });
+//   }
+
+//   const caseDiscussion = {
+//     id: uuidv4(),
+//     title,
+//     type,
+//     specialty,
+//     publish_date,
+//     tags: parsedTags,
+//     diagnosis,
+//     outcome,
+//     created_by: req.user.id,
+//     created_at: new Date().toISOString(),
+//     solved: false,
+//     view_count: 0,
+//     comment_count: 0,
+//     edit_logs: [],
+//   };
+
+//   if (req.files) {
+//     const imagePaths = [];
+//     for (const img of req.files) {
+//       const filename = `${uuidv4()}.png`;
+//       const filepath = path.join(__dirname, 'uploads/cases', filename);
+//       await sharp(img.buffer).png().toFile(filepath);
+//       imagePaths.push(filename);
+//     }
+//     caseDiscussion.images = imagePaths;
+//   }
+
+//   const { error } = await supabase.from('case_discussions').insert(caseDiscussion);
+//   if (error) {
+//     return res.status(500).json({ error: 'Failed to post case discussion: ' + error.message });
+//   }
+
+//   await supabase
+//     .from('profiles')
+//     .update({ no_of_case_discussions: req.user.no_of_case_discussions + 1 })
+//     .eq('id', req.user.id);
+
+//   res.json(caseDiscussion);
+// });
+
 app.post('/case-discussion', authenticateJWT, upload.array('images', 5), async (req, res) => {
   const { title, type, specialty, publish_date, tags, diagnosis, outcome, history, author } = req.body;
 
@@ -1266,6 +1523,76 @@ app.post('/case-discussion', authenticateJWT, upload.array('images', 5), async (
 
 
 // Update Case Discussion
+// app.put('/case-discussion/:id', authenticateJWT, upload.array('images', 5), async (req, res) => {
+//   const { id } = req.params;
+//   const { title, type, specialty, publish_date, tags, diagnosis, outcome, solved } = req.body;
+
+//   const { data: existingCase } = await supabase
+//     .from('case_discussions')
+//     .select('*')
+//     .eq('id', id)
+//     .single();
+
+//   if (!existingCase || (existingCase.created_by !== req.user.id && req.user.user_type !== 'superadmin')) {
+//     return res.status(403).json({ error: 'Unauthorized' });
+//   }
+
+//   const updates = {};
+//   if (title) updates.title = title;
+//   if (type) updates.type = type;
+//   if (specialty) updates.specialty = specialty;
+//   if (publish_date) updates.publish_date = publish_date;
+//   if (diagnosis) updates.diagnosis = diagnosis;
+//   if (outcome) updates.outcome = outcome;
+//   if (history) updates.history = history;
+//   if (solved !== undefined) updates.solved = solved;
+
+//   if (tags) {
+//     try {
+//       const parsedTags = JSON.parse(tags);
+//       if (!Array.isArray(parsedTags) || !parsedTags.every(item => typeof item === 'string')) {
+//         return res.status(400).json({ error: 'Tags must be an array of strings' });
+//       }
+//       updates.tags = parsedTags;
+//     } catch (error) {
+//       return res.status(400).json({ error: 'Invalid JSON format for tags: ' + error.message });
+//     }
+//   }
+
+//   updates.edited_at = new Date().toISOString();
+//   updates.edit_logs = [...(existingCase.edit_logs || []), { timestamp: new Date().toISOString(), updated_by: req.user.id }];
+
+//   if (req.files) {
+//     if (existingCase.images) {
+//       for (const img of existingCase.images) {
+//         await fs.unlink(path.join(__dirname, 'uploads/cases', img)).catch(() => {});
+//       }
+//     }
+//     const imagePaths = [];
+//     for (const img of req.files) {
+//       const filename = `${uuidv4()}.png`;
+//       const filepath = path.join(__dirname, 'uploads/cases', filename);
+//       await sharp(img.buffer).png().toFile(filepath);
+//       imagePaths.push(filename);
+//     }
+//     updates.images = imagePaths;
+//   }
+
+//   const { data, error } = await supabase
+//     .from('case_discussions')
+//     .update(updates)
+//     .eq('id', id)
+//     .select()
+//     .single();
+
+//   if (error) {
+//     return res.status(500).json({ error: 'Failed to update case discussion: ' + error.message });
+//   }
+
+//   res.json(data);
+// });
+
+
 app.put('/case-discussion/:id', authenticateJWT, upload.array('images', 5), async (req, res) => {
   const { id } = req.params;
   const { title, type, specialty, publish_date, tags, diagnosis, outcome, solved, history } = req.body;
@@ -1341,6 +1668,54 @@ app.put('/case-discussion/:id', authenticateJWT, upload.array('images', 5), asyn
 
   res.json(data);
 });
+// // Get Case Discussion
+// app.get('/case-discussion/:id', authenticateJWT, async (req, res) => {
+//   const { id } = req.params;
+//   const { data, error } = await supabase
+//     .from('case_discussions')
+//     .select('*')
+//     .eq('id', id)
+//     .single();
+
+//   if (error || !data) {
+//     return res.status(404).json({ error: 'Case discussion not found' });
+//   }
+
+//   await supabase
+//     .from('case_discussions')
+//     .update({ view_count: data.view_count + 1 })
+//     .eq('id', id);
+
+//   res.json(data);
+// });
+
+// app.get('/case-discussion/:id/images', async (req, res) => {
+//   const { id } = req.params;
+
+//   try {
+//     const { data, error } = await supabase
+//       .from('case_discussions')
+//       .select('images') // DB stores filenames only
+//       .eq('id', id)
+//       .single();
+
+//     if (error) {
+//       return res.status(500).json({ error: 'Failed to fetch images: ' + error.message });
+//     }
+
+//     if (!data || !data.images || data.images.length === 0) {
+//       return res.status(404).json({ message: 'No images found for this case discussion' });
+//     }
+
+//     const imageUrls = data.images.map(filename =>
+//       `http://localhost:3000/uploads/cases/${filename}`
+//     );
+
+//     res.json({ images: imageUrls });
+//   } catch (err) {
+//     res.status(500).json({ error: 'Server error: ' + err.message });
+//   }
+// });
 
 
 // Get Case Discussion with Images
@@ -1470,6 +1845,53 @@ app.delete('/case-discussion/:id', authenticateJWT, async (req, res) => {
 });
 
 // Post Comment (Research Paper or Case Discussion)
+// app.post('/:type/:id/comment', authenticateJWT, async (req, res) => {
+//   const { type, id } = req.params;
+//   const { content } = req.body;
+//   const table = type === 'research' ? 'research_papers' : 'case_discussions';
+
+//   const { data: item, error: itemError } = await supabase
+//     .from(table)
+//     .select('comment_count')
+//     .eq('id', id)
+//     .single();
+
+//   if (itemError || !item) {
+//     return res.status(404).json({ error: `${type} not found` });
+//   }
+
+//   const comment = {
+//     id: uuidv4(),
+//     parent_id: id,
+//     parent_type: type,
+//     content,
+//     created_by: req.user.id,
+//     created_at: new Date().toISOString(),
+//   };
+
+//   const { error } = await supabase.from('comments').insert(comment);
+//   if (error) {
+//     return res.status(500).json({ error: 'Failed to post comment: ' + error.message });
+//   }
+
+//   await supabase
+//     .from(table)
+//     .update({ comment_count: item.comment_count + 1 })
+//     .eq('id', id);
+
+//   await supabase
+//     .from('profiles')
+//     .update({ no_of_comments_posted: req.user.no_of_comments_posted + 1 })
+//     .eq('id', req.user.id);
+
+//   io.emit(`${type}-comment`, { itemId: id, comment });
+
+//   res.json(comment);
+// });
+
+// =============================
+// Post Comment (Research / Case)
+// =============================
 app.post('/:type/:id/comment', authenticateJWT, async (req, res) => {
   const { type, id } = req.params;
   const { content } = req.body;
@@ -1542,6 +1964,47 @@ app.post('/:type/:id/comment', authenticateJWT, async (req, res) => {
   res.json(comment);
 });
 
+// // Get all comments for a specific parent (research-paper or case-discussion)
+// app.get('/:type/:id/comments', authenticateJWT, async (req, res) => {
+//   const { type, id } = req.params;
+
+//   // Validate type
+//   if (!['research-paper', 'case-discussion'].includes(type)) {
+//     return res.status(400).json({ error: 'Invalid comment type' });
+//   }
+
+//   // Validate UUID
+//   const uuidRegex =
+//     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+//   if (!uuidRegex.test(id)) {
+//     return res.status(400).json({ error: 'Invalid parent ID format' });
+//   }
+
+//   try {
+//     // Fetch comments for this parent
+//     const { data: comments, error } = await supabase
+//       .from('comments')
+//       .select(`
+//         id,
+//         content,
+//         created_at,
+//         created_by,
+//         profiles!comments_created_by_fkey(name, avatar)
+//       `)
+//       .eq('parent_id', id)
+//       .eq('parent_type', type)
+//       .order('created_at', { ascending: true }); // oldest first
+
+//     if (error) {
+//       return res.status(500).json({ error: 'Failed to fetch comments: ' + error.message });
+//     }
+
+//     res.json(comments);
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ error: 'Internal server error' });
+//   }
+// });
 
 // Get all comments for a specific parent (research-paper or case-discussion)
 app.get('/:type/:id/comments', authenticateJWT, async (req, res) => {
@@ -1616,12 +2079,10 @@ app.post('/logout', authenticateJWT, async (req, res) => {
   res.json({ message: 'Logged out successfully' });
 });
 
-
 app.get("/", (req, res) => {
   res.send("Isa Nagpur acadamia project running");
 });
 
-const port = process.env.PORT || 3000;
-server.listen(port, '0.0.0.0', () => {
+server.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
